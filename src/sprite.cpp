@@ -56,10 +56,19 @@
 // Headers
 ////////////////////////////////////////////////////////////
 #include "sprite.hpp"
+#include "fe_present.hpp"
+#include <SFML/OpenGL.hpp>
 #include <SFML/Graphics/Texture.hpp>
 #include <SFML/Graphics/RenderTarget.hpp>
 #include <cmath>
 
+#ifndef GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT
+#  define GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT 0x84FF
+#endif
+
+#ifndef GL_TEXTURE_MAX_ANISOTROPY_EXT
+#  define GL_TEXTURE_MAX_ANISOTROPY_EXT 0x84FE
+#endif
 
 ////////////////////////////////////////////////////////////
 FeSprite::FeSprite() :
@@ -166,8 +175,21 @@ void FeSprite::draw(sf::RenderTarget& target, sf::RenderStates states) const
 	{
 		states.transform *= getTransform();
 		states.texture = m_texture;
+
 		if ( m_vertices[0].color.a > 0 )
 			target.draw( m_vertices, states );
+
+		// Set anisotropic filtering
+		FePresent *fep = FePresent::script_get_fep();
+		if ( fep )
+		{
+			if ( fep->get_fes()->get_info_bool( FeSettings::AnisotropicFilter ))
+			{
+				GLfloat aniso_max;
+				glGetFloatv( GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &aniso_max );
+				glTexParameterf( GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, aniso_max );
+			}
+		}
 	}
 }
 

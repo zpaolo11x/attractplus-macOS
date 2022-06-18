@@ -139,6 +139,7 @@ public:
 		ScrapeOverview,
 		ThegamesdbKey,
 		PowerSaving,
+		AnisotropicFilter,
 #ifdef SFML_SYSTEM_WINDOWS
 		HideConsole,
 #endif
@@ -236,6 +237,7 @@ private:
 	bool m_hide_console;
 #endif
 	bool m_power_saving;
+	bool m_anisotropic_filter;
 	bool m_loaded_game_extras;
 	enum FePresentState m_present_state;
 
@@ -421,6 +423,8 @@ public:
 	//
 	FePresentState get_present_state() const { return m_present_state; };
 	void set_present_state( FePresentState s ) { m_present_state=s; };
+
+	bool get_anisotropic_filter() const { return m_anisotropic_filter; };
 
 #ifdef SFML_SYSTEM_WINDOWS
 	bool get_hide_console() const { return m_hide_console; };

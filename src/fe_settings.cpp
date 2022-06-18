@@ -300,6 +300,7 @@ FeSettings::FeSettings( const std::string &config_path,
 	m_hide_console( false ),
 #endif
 	m_power_saving( false ),
+	m_anisotropic_filter( false ),
 	m_loaded_game_extras( false ),
 	m_present_state( Layout_Showing )
 {
@@ -430,6 +431,7 @@ const char *FeSettings::configSettingStrings[] =
 	"scrape_overview",
 	"thegamesdb_key",
 	"power_saving",
+	"anisotropic_filter",
 #ifdef SFML_SYSTEM_WINDOWS
 	"hide_console",
 #endif
@@ -2846,6 +2848,7 @@ const std::string FeSettings::get_info( int index ) const
 	case ScrapeVids:
 	case ScrapeOverview:
 	case PowerSaving:
+	case AnisotropicFilter:
 #ifdef SFML_SYSTEM_WINDOWS
 	case HideConsole:
 #endif
@@ -2907,6 +2910,8 @@ bool FeSettings::get_info_bool( int index ) const
 		return m_scrape_overview;
 	case PowerSaving:
 		return m_power_saving;
+	case AnisotropicFilter:
+		return m_anisotropic_filter;
 #ifdef SFML_SYSTEM_WINDOWS
 	case HideConsole:
 		return m_hide_console;
@@ -3124,6 +3129,10 @@ bool FeSettings::set_info( int index, const std::string &value )
 
 	case PowerSaving:
 		m_power_saving = config_str_to_bool( value );
+		break;
+
+	case AnisotropicFilter:
+		m_anisotropic_filter = config_str_to_bool( value );
 		break;
 
 #ifdef SFML_SYSTEM_WINDOWS
