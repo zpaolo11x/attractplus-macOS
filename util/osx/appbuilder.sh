@@ -186,4 +186,4 @@ done
 
 echo STEP 5 - RENAME ARTIFACT TO v${SHORTVERSION}
 
-mv "$bundlehome" "artifacts/Attract-Mode Plus v${SHORTVERSION}.app"
+mv "$bundlehome" "$buildpath/Attract-Mode Plus v${SHORTVERSION}.app"
