@@ -500,10 +500,10 @@ endif
 
 sfml: sfmlbuild
 ifeq ($(STATIC),1)
-	$(eval SFML_LIBS += $(shell PKG_CONFIG_PATH$(PKG_CONFIG_MXE)="$(SFML_PKG_CONFIG_PATH)" $(PKG_CONFIG) --static --libs-only-L $(SFML_PC)))
+	$(eval SFML_LIBS += $(shell PKG_CONFIG_PATH$(PKG_CONFIG_MXE)="$(SFML_PKG_CONFIG_PATH):${PKG_CONFIG_PATH}" $(PKG_CONFIG) --static --libs-only-L $(SFML_PC)))
 	$(info Manually adding sfml libs as pkg-config has no --static version)
 	$(eval SFML_LIBS += -lsfml-graphics-s -lsfml-window-s -lsfml-audio-s -lsfml-system-s)
-	$(eval CFLAGS += -DSFML_STATIC $(shell PKG_CONFIG_PATH$(PKG_CONFIG_MXE)="$(SFML_PKG_CONFIG_PATH)" $(PKG_CONFIG) --static --cflags $(SFML_PC)))
+	$(eval CFLAGS += -DSFML_STATIC $(shell PKG_CONFIG_PATH$(PKG_CONFIG_MXE)="$(SFML_PKG_CONFIG_PATH):${PKG_CONFIG_PATH}" $(PKG_CONFIG) --static --cflags $(SFML_PC)))
 ifeq ($(FE_WINDOWS_COMPILE),1)
 else ifeq ($(FE_MACOSX_COMPILE),1)
 else
@@ -511,8 +511,8 @@ else
 endif
 else
 	# SFML may not generate .pc files, so manually add libs
-	$(eval CFLAGS += $(shell PKG_CONFIG_PATH$(PKG_CONFIG_MXE)="$(SFML_PKG_CONFIG_PATH)" $(PKG_CONFIG) --cflags $(SFML_PC)))
-	$(eval SFML_LIBS += $(shell PKG_CONFIG_PATH$(PKG_CONFIG_MXE)="$(SFML_PKG_CONFIG_PATH)" $(PKG_CONFIG) --libs $(SFML_PC)))
+	$(eval CFLAGS += $(shell PKG_CONFIG_PATH$(PKG_CONFIG_MXE)="$(SFML_PKG_CONFIG_PATH):${PKG_CONFIG_PATH}" $(PKG_CONFIG) --cflags $(SFML_PC)))
+	$(eval SFML_LIBS += $(shell PKG_CONFIG_PATH$(PKG_CONFIG_MXE)="$(SFML_PKG_CONFIG_PATH):${PKG_CONFIG_PATH}" $(PKG_CONFIG) --libs $(SFML_PC)))
 	#LIBS += -lsfml-graphics -lsfml-window -lsfml-system
 endif
 	$(eval override LIBS = $(SFML_LIBS) $(LIBS))
