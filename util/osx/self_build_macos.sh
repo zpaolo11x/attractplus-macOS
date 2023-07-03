@@ -7,14 +7,15 @@ else
     branch=""
 fi
 
-export PKG_CONFIG_PATH=/usr/local/pkgconfig
+HB_PREFIX=$(brew --prefix openal-soft)
+export PKG_CONFIG_PATH=/usr/local/pkgconfig:$HB_PREFIX/lib/pkgconfig
 
 echo Creating Folders
 rm -Rf $HOME/buildattract
 mkdir $HOME/buildattract
 
 echo Cloning attractplus
-git clone $branch http://github.com/oomek/attractplus $HOME/buildattract/attractplus
+git clone $branch http://github.com/zpaolo11x/attractplus-macOS $HOME/buildattract/attractplus
 
 cd $HOME/buildattract/attractplus
 
