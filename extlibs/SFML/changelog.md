@@ -1,5 +1,36 @@
 # Changelog
 
+## SFML 2.6.1
+
+Also available on the website: https://www.sfml-dev.org/changelog.php#sfml-2.6.1
+
+### General
+
+-   Stop overwriting CMAKE_MODULE_PATH (#2577)
+-   Loosen restrictions on unknown compilers (#2585)
+-   Fix CI deprecation warnings (#2624)
+-   Fix unused compiler flag error in Clang (#2625)
+-   Disable warnings as errors by default (#2680)
+
+### Window
+
+**Bugfixes**
+
+-   Fix macOS resize event bug (#2618)
+-   Skip ClientMessage events with other window ID unless it is for IM (#2651)
+
+### Graphics
+
+**Bugfixes**
+
+-   Ensure OpenGL extensions are loaded before querying maximum texture size (#2603)
+
+### Audio
+
+**Bugfixes**
+
+-   Remove use of C++11 header (#2591)
+
 ## SFML 2.6.0
 
 Also available on the website: https://www.sfml-dev.org/changelog.php#sfml-2.6.0
@@ -8,7 +39,7 @@ Also available on the website: https://www.sfml-dev.org/changelog.php#sfml-2.6.0
 
 -   Various CMake enhancements (#1477, #1509, #1561, #1563, #1576, #1624, #1739, #1960)
 -   Small documentation changes (#1519, #1608, #1628, #1657, #1658, #1652, #1665, #1697, #1774, #1776, #1853, #2038, #2083, #2271)
--   Various casting fixes (#1499, #1553, #2040, #2222, #2297, #2298, #2323)
+-   Various casting fixes (#1499, #1553, #2040, #2222, #2297, #2298, #2323, #2576)
 -   Add unit testing foundation to SFML (#623, #1475)
 -   Changed Doxygen single-line comment format (#1622, #1623)
 -   Add support for GitHub Actions (#1716, #1751, #2058, #2114)
