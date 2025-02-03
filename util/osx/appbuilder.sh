@@ -34,14 +34,14 @@ checklib=$(brew --prefix)
 fr_lib+=("@rpath/libsfml")
 to_lib+=("$checklib/opt/sfml@2/lib/libsfml")
 
+checklib=$(brew --prefix)
+fr_lib+=("/opt/homebrew/Cellar")
+to_lib+=("$checklib/opt")
+
 checklib=$(pkg-config --libs-only-L libavcodec)
 checklib="${checklib:2}"
 fr_lib+=("/opt/homebrew/Cellar/ffmpeg/7.1_4/lib/libavcodec")
 to_lib+=("$checklib/libavcodec")
-
-checklib=$(brew --prefix)
-fr_lib+=("/opt/homebrew/Cellar")
-to_lib+=("$checklib/opt")
 
 checklib=$(brew --prefix)
 fr_lib+=("@loader_path/../../../../opt")
