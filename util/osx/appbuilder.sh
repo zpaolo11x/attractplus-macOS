@@ -35,6 +35,10 @@ fr_lib+=("@rpath/libsfml")
 to_lib+=("$checklib/opt/sfml@2/lib/libsfml")
 
 checklib=$(brew --prefix)
+fr_lib+=("/opt/homebrew/Cellar/ffmpeg")
+to_lib+=("/opt/homebrew/Cellar/ffmpeg")
+
+checklib=$(brew --prefix)
 fr_lib+=("/opt/homebrew/Cellar")
 to_lib+=("$checklib/opt")
 
