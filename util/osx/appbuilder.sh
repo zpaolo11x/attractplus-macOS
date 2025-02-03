@@ -201,9 +201,9 @@ for str in ${libsarray[@]}; do
 	for enum in ${!subarray[@]}; do
       str3=$( basename "${subarray_fix[enum]}" )
       str2="${subarray[enum]}"
-      install_name_tool -change $str2 @loader_path/../libs/$str3 "$bundlelibs"/$str
+      install_name_tool -change $str2 @loader_path/../libs/$str3 "$bundlelibs"/$str 2>/dev/null
    done
-   install_name_tool -id @loader_path/../libs/$str "$bundlelibs"/$str
+   install_name_tool -id @loader_path/../libs/$str "$bundlelibs"/$str 2>/dev/null
 	#codesign --force -s - "$bundlelibs"/$str
 done
 
