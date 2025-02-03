@@ -30,8 +30,9 @@ echo STEP 2 - COLLECT AND FIX LINKED LIBRARIES
 # Define library fixing pairs
 #-- Installing: /Users/djhan/buildattract/attractplus/obj/sfml/install/lib/freetype.framework/Versions/A/freetype
 
+checklib=$(brew --prefix)
 fr_lib+=("@rpath/libsfml")
-to_lib+=("$basedir/obj/sfml/install/lib/libsfml")
+to_lib+=("$checklib/libsfml")
 
 checklib=$(brew --prefix)
 fr_lib+=("/opt/homebrew/Cellar")
