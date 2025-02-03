@@ -32,7 +32,7 @@ echo STEP 2 - COLLECT AND FIX LINKED LIBRARIES
 
 checklib=$(brew --prefix)
 fr_lib+=("@rpath/libsfml")
-to_lib+=("$checklib/libsfml")
+to_lib+=("$checklib/opt/sfml@2/lib/libsfml")
 
 checklib=$(brew --prefix)
 fr_lib+=("/opt/homebrew/Cellar")
