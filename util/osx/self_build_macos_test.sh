@@ -4,7 +4,7 @@ if [[ -n "$1" ]]
 then
     branch="-b $1"
 else
-    branch="fix_macOS_builder"
+    branch="-b fix_macOS_builder"
 fi
 
 export PKG_CONFIG_PATH=/usr/local/pkgconfig:/opt/homebrew/opt/sfml@2/lib/pkgconfig:/opt/homebrew/opt/openal-soft/lib/pkgconfig
@@ -27,7 +27,7 @@ NPROC=$(getconf _NPROCESSORS_ONLN)
 
 echo Building attractplus
 make clean
-eval make -j${NPROC} STATIC=0 VERBOSE=1 USE_SYSTEM_SFLM=1 prefix=..
+eval make -j${NPROC} STATIC=0 VERBOSE=1 USE_SYSTEM_SFML=1 prefix=..
 
 
 bash util/osx/appbuilder.sh $HOME/buildattractTEST $HOME/buildattractTEST/attractplus yes
