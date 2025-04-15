@@ -66,7 +66,7 @@ public:
 	const std::optional<sf::Event> pollEvent();
 
 	sf::RenderWindow &get_win();
-	const sf::Texture &get_logo() const { return *m_logo; };
+	sf::Texture &get_logo();
 };
 
 #endif

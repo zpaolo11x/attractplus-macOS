@@ -153,6 +153,7 @@ void FeWindow::display()
 
 void FeWindow::initial_create()
 {
+	FeLog() << "FeWindow::initial_create()" << std::endl;
 	if ( !m_window )
 		m_window = new sf::RenderWindow();
 
@@ -419,10 +420,12 @@ void FeWindow::initial_create()
 	if ( m_fes.test_mouse_reset( 0, 0 ) )
 		sf::Mouse::setPosition( sf::Vector2i( wsize.x / 2, wsize.y / 2 ), *m_window );
 
+	FeLog() << "m_logo->loadFromMemory" << std::endl;
 	m_logo = new sf::Texture();
 	std::vector<unsigned char> logo_data = base64_decode( _binary_resources_images_Logo_png );
 	if ( m_logo->loadFromMemory( logo_data.data(), logo_data.size() ))
 	{
+		FeLog() << "m_logo->loadFromMemory OK" << std::endl;
 		m_logo->setSmooth( true );
 		m_logo->generateMipmap();
 	}
@@ -715,8 +718,15 @@ sf::RenderWindow &FeWindow::get_win()
 	return *m_window;
 }
 
+sf::Texture &FeWindow::get_logo()
+{
+	FeLog() << "FeWindow::get_logo()" << std::endl;
+	return *m_logo;
+};
+
 void FeWindow::close()
 {
+	FeLog() << "FeWindow::close()" << std::endl;
 	if ( m_logo )
 		delete m_logo;
 
