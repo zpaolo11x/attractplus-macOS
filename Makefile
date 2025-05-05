@@ -462,7 +462,7 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp $(DEP) $(RES) | $(OBJ_DIR)
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.mm $(DEP) | $(OBJ_DIR)
 	$(CC_MSG)
-	$(SILENT)$(CC) -c -o $@ $< $(CFLAGS) $(FE_FLAGS)
+	$(SILENT)$(CXX) -c -o $@ $< $(CFLAGS) $(FE_FLAGS)
 
 .PRECIOUS: $(OBJ_DIR)/%.h
 $(OBJ_DIR)/%.h: % | $(RES_FONTS_DIR) $(RES_IMGS_DIR)
