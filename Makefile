@@ -472,7 +472,7 @@ $(OBJ_DIR)/%.h: % | $(RES_FONTS_DIR) $(RES_IMGS_DIR)
 
 $(EXE): $(OBJ) $(EXPAT) $(SQUIRREL)
 	$(EXE_MSG)
-	$(SILENT)$(CXX) -o $@ $(SFML_OBJ) $^ $(CFLAGS) $(FE_FLAGS) $(LIBS)
+	$(SILENT)$(CXX) -o $@ $(SFML_OBJ) $^ $(CFLAGS) $(FE_FLAGS) $(LIBS) -ObjC
 ifneq ($(FE_DEBUG),1)
 	$(SILENT)$(STRIP) $@
 endif
