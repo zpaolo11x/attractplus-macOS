@@ -428,7 +428,7 @@ void FeWindow::initial_create()
 #if defined(SFML_SYSTEM_WINDOWS) && !defined(WINDOWS_XP)
 	m_window->setVerticalSyncEnabled( m_win_mode == FeSettings::Fullscreen );
 #else
-	m_window->setVerticalSyncEnabled(true);
+	m_window->setFramerateLimit(60);
 #endif
 	m_window->setKeyRepeatEnabled(false);
 	m_window->setMouseCursorVisible(false);
