@@ -46,7 +46,7 @@
 #include "nowide/fstream.hpp"
 
 #include <SFML/System/Sleep.hpp>
-#include <OpenGL.hpp>
+#include <SFML/OpenGL.hpp>
 
 #ifdef SFML_SYSTEM_WINDOWS
 void set_win32_foreground_window( HWND hwnd, HWND order )
