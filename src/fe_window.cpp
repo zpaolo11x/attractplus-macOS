@@ -153,7 +153,7 @@ FeWindow::~FeWindow()
 void FeWindow::display()
 {
 	m_window->display();
-
+	glFinish();
 	// Starting from Windows Vista all window modes
 	// go through DWM, so we have to flush here to sync to the DMW's v-sync
 	// to avoid stuttering.
