@@ -34,7 +34,7 @@ pwd
 
 checklib=$(brew --prefix)
 fr_lib+=("@rpath/libsfml")
-to_lib+=("am/obj/sfml/install/lib/libsfml")
+to_lib+=("$basedir/obj/sfml/install/lib/libsfml")
 
 checklib=$(brew --prefix)
 fr_lib+=("/opt/homebrew/Cellar/ffmpeg/7.1.1_1/lib")
