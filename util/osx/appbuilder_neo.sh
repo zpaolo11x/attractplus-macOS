@@ -1,49 +1,35 @@
 #!/bin/bash
 
-# Usage: ./resolve-dylibs.sh /path/to/binary /path/to/app/bundle
+set -euo pipefail
 
 # STEP 1 - PREPARE BUNDLE FOLDERS
 echo "STEP 1 - PREPARE BUNDLE FOLDERS"
 
-# Default to "artifacts" if not provided, as buildpath
 buildpath=${1:-"artifacts"}
-
 echo "Build Path: $buildpath"
 
-# Define folder path variables
 bundlehome="$buildpath/Attract Mode Plus.app"
-bundlecontent="$bundlehome"/Contents
-bundlelibs="$bundlecontent"/libs
+bundlecontent="$bundlehome/Contents"
+bundlelibs="$bundlecontent/libs"
 
-# Clean up previous builds
 rm -Rf "$bundlehome"
-
-# Create the app bundle folders
-mkdir -p "$bundlehome" "$bundlecontent" "$bundlelibs"
-mkdir -p "$bundlecontent"/MacOS "$bundlecontent"/Resources "$bundlecontent"/share "$bundlecontent"/share/attract
+mkdir -p "$bundlelibs" "$bundlecontent/MacOS" "$bundlecontent/Resources" "$bundlecontent/share/attract"
 
 # STEP 2 - EXECUTABLE AND LIBRARY HANDLING
 echo "STEP 2 - EXECUTABLE AND LIBRARY HANDLING"
 
-# Use the passed or default 'basedir' as the executable path
 basedir=${2:-"am"}
-attractname="$basedir/attractplus"  # Executable path
+attractname="$basedir/attractplus"
 
-# Check if the executable exists
 if [ ! -f "$attractname" ]; then
   echo "Error: Executable $attractname does not exist!"
   exit 1
 fi
 
-# Initialize arrays to track libraries
 VISITED=()
 RESOLVED=()
+LIBRARY_DIR="$bundlelibs"
 
-LIBRARY_DIR="$bundlelibs"  # Libraries will be copied here
-
-mkdir -p "$LIBRARY_DIR"  # Ensure libs folder exists
-
-# Function to recursively resolve library dependencies
 resolve_links() {
   local file="$1"
   [[ ! -f "$file" ]] && return
@@ -57,7 +43,7 @@ resolve_links() {
   while IFS= read -r lib; do
     local resolved=""
 
-    # --- Special case: @rpath/libsfml* -> am/obj/sfml/install/lib ---
+    # Special case: @rpath/libsfml*
     if [[ "$lib" == @rpath/libsfml* ]]; then
       local libfile="${lib#@rpath/}"
       local sfml_candidate="am/obj/sfml/install/lib/$libfile"
@@ -67,14 +53,14 @@ resolve_links() {
       fi
     fi
 
-    # --- Try pkg-config if still unresolved and lib is @rpath/... ---
+    # Try pkg-config if still unresolved
     if [[ -z "$resolved" && "$lib" == @rpath/* ]]; then
       local libfile="${lib#@rpath/}"
-      local base="${libfile%%.dylib*}"         # e.g. libwebp.7 or libwebp.0.1
-      base="${base%%.*}"                       # extract just the base, e.g. libwebp
+      local base="${libfile%%.dylib*}"
+      base="${base%%.*}"
       echo "Running pkg-config --libs-only-L for: $base"
       local pkg_lib
-      pkg_lib=$(pkg-config --libs-only-L "$base" 2>/dev/null)
+      pkg_lib=$(pkg-config --libs-only-L "$base" 2>/dev/null || true)
       echo "pkg-config result for $base: $pkg_lib"
 
       if [[ -n "$pkg_lib" ]]; then
@@ -86,12 +72,12 @@ resolve_links() {
       fi
     fi
 
-    # --- Try absolute path as-is ---
+    # Try absolute path
     if [[ -z "$resolved" && -f "$lib" ]]; then
       resolved="$lib"
     fi
 
-    # --- Try rpath entries in binary ---
+    # Try rpaths
     if [[ -z "$resolved" && "$lib" == @rpath/* ]]; then
       local rpaths
       rpaths=$(otool -l "$file" | awk '
@@ -107,7 +93,6 @@ resolve_links() {
       done
     fi
 
-    # --- Store and recurse ---
     if [[ -n "$resolved" && ! " ${RESOLVED[*]} " =~ " ${resolved} " ]]; then
       RESOLVED+=("$resolved")
       resolve_links "$resolved"
@@ -115,39 +100,58 @@ resolve_links() {
   done <<< "$links"
 }
 
-# Start resolving libraries from the executable
 resolve_links "$attractname"
 
-# STEP 3 - COPY LIBRARIES TO BUNDLE
+# STEP 3 - COPY LIBRARIES
 echo "STEP 3 - COPYING LIBRARIES TO BUNDLE"
 
 for lib in "${RESOLVED[@]}"; do
   lib_name=$(basename "$lib")
   if [[ ! -f "$LIBRARY_DIR/$lib_name" ]]; then
     echo "Copying $lib to $LIBRARY_DIR/$lib_name"
-    cp -v "$lib" "$LIBRARY_DIR/$lib_name"
+    cp "$lib" "$LIBRARY_DIR/$lib_name"
   fi
 done
 
-# STEP 4 - UPDATE LIBRARY PATHS IN BINARY AND RESOLVED LIBRARIES
-echo "STEP 4 - UPDATING LIBRARY PATHS"
+# STEP 4 - FIX INTERNAL LINKS IN BUNDLED LIBRARIES
+echo "STEP 4 - FIXING INTERNAL LIBRARY LINKS"
 
-# Update rpath in the executable to point to the new libs folder inside the app bundle
-install_name_tool -add_rpath "@executable_path/../libs" "$attractname"
+for lib in "$LIBRARY_DIR"/*.dylib; do
+  echo "Processing $lib"
+  linked_libs=$(otool -L "$lib" | tail -n +2 | awk '{print $1}')
 
-# Update library paths in the executable and all resolved libraries
-for lib in "${RESOLVED[@]}"; do
-  lib_name=$(basename "$lib")
-  new_path="$LIBRARY_DIR/$lib_name"
+  while IFS= read -r dep; do
+    dep_base=$(basename "$dep")
+    local_target="@executable_path/../libs/$dep_base"
 
-  # Update the binary to point to the new location for this library
-  install_name_tool -change "$lib" "@executable_path/../libs/$lib_name" "$attractname"
-
-  # Update all linked libraries that point to this one (recursively)
-  resolve_links "$lib"
-  for linked_lib in "${VISITED[@]}"; do
-    install_name_tool -change "$lib" "@executable_path/../libs/$lib_name" "$linked_lib"
-  done
+    if [[ "$dep" == @rpath/* || "$dep" == /opt/homebrew/* || -f "$LIBRARY_DIR/$dep_base" ]]; then
+      echo "  Rewriting $dep -> $local_target"
+      chmod +w "$lib"
+      install_name_tool -change "$dep" "$local_target" "$lib"
+      chmod -w "$lib"
+    fi
+  done <<< "$linked_libs"
 done
 
-echo "Library paths updated successfully!"
+# STEP 5 - FIX LINKS IN EXECUTABLE
+echo "STEP 5 - FIXING EXECUTABLE LIBRARY LINKS"
+
+linked_libs=$(otool -L "$attractname" | tail -n +2 | awk '{print $1}')
+
+while IFS= read -r dep; do
+  dep_base=$(basename "$dep")
+  local_target="@executable_path/../libs/$dep_base"
+
+  if [[ "$dep" == @rpath/* || "$dep" == /opt/homebrew/* || -f "$LIBRARY_DIR/$dep_base" ]]; then
+    echo "  Rewriting $dep -> $local_target"
+    chmod +w "$attractname"
+    install_name_tool -change "$dep" "$local_target" "$attractname"
+    chmod -w "$attractname"
+  fi
+done <<< "$linked_libs"
+
+# Add rpath if needed
+echo "Adding @executable_path/../libs rpath to executable"
+install_name_tool -add_rpath "@executable_path/../libs" "$attractname" || true
+
+echo "✅ All libraries copied and relinked. App bundle ready at: $bundlehome"
