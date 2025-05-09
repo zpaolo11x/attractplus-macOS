@@ -31,10 +31,22 @@ resolve_links() {
       LIBRARY_ARRAY+=("$lib")
     fi
 
-    # Resolve @rpath to absolute path if possible (best effort)
+    # Resolve @rpath using pkg-config if available
     local resolved=""
     if [[ "$lib" == @rpath/* ]]; then
-      # Try to use `otool -l` and `install_name_tool` like logic for better @rpath resolution
+      # Attempt pkg-config for @rpath
+      local pkg_lib
+      pkg_lib=$(pkg-config --libs-only-L "${lib#@rpath/}" 2>/dev/null)
+
+      if [[ -n "$pkg_lib" ]]; then
+        resolved="$pkg_lib/${lib#@rpath/}"
+      fi
+    elif [[ -f "$lib" ]]; then
+      resolved="$lib"
+    fi
+
+    # If pkg-config resolution fails, try manual resolution using otool -l and LC_RPATH
+    if [[ -z "$resolved" && "$lib" == @rpath/* ]]; then
       local rpaths
       rpaths=$(otool -l "$file" | awk '
         $1 == "cmd" && $2 == "LC_RPATH" {r=1}
@@ -48,8 +60,6 @@ resolve_links() {
           break
         fi
       done
-    elif [[ -f "$lib" ]]; then
-      resolved="$lib"
     fi
 
     # Recurse into resolved library
