@@ -51,7 +51,7 @@ jobs:
       run: |
         git -C am/ fetch --unshallow
         mkdir -p "${GITHUB_WORKSPACE}"/artifacts
-        bash am/util/osx/recursive-dylib-deps.sh
+        bash am/util/osx/recursive-dylib-deps.sh am/attractplus
         bash am/util/osx/appbuilder.sh
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
