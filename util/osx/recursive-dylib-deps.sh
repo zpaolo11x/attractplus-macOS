@@ -9,7 +9,7 @@ fi
 
 BINARY="$1"
 VISITED=()
-LIBRARY_ARRAY=()
+RESOLVED=()
 
 # Function to resolve and store libraries recursively
 resolve_links() {
@@ -26,11 +26,6 @@ resolve_links() {
   links=$(otool -L "$file" | tail -n +2 | awk '{print $1}')
 
   while IFS= read -r lib; do
-    # Filter for rpath and /opt/homebrew libraries
-    if [[ "$lib" == @rpath* || "$lib" == /opt/homebrew/* ]]; then
-      LIBRARY_ARRAY+=("$lib")
-    fi
-
     # Resolve @rpath using pkg-config if available
     local resolved=""
     if [[ "$lib" == @rpath/* ]]; then
@@ -71,9 +66,9 @@ resolve_links() {
       done
     fi
 
-    # Only add the resolved library to LIBRARY_ARRAY (not @rpath ones)
-    if [[ -n "$resolved" ]]; then
-      LIBRARY_ARRAY+=("$resolved")
+    # Only add resolved paths to RESOLVED if not already added
+    if [[ -n "$resolved" && ! " ${RESOLVED[*]} " =~ " ${resolved} " ]]; then
+      RESOLVED+=("$resolved")
       resolve_links "$resolved"
     fi
   done <<< "$links"
@@ -82,8 +77,8 @@ resolve_links() {
 # Start the resolution process
 resolve_links "$BINARY"
 
-# Now LIBRARY_ARRAY contains all the resolved libraries with their paths
+# Now RESOLVED contains all the unique resolved libraries with their paths
 echo "Libraries linked (with resolved paths):"
-for lib in "${LIBRARY_ARRAY[@]}"; do
+for lib in "${RESOLVED[@]}"; do
   echo "$lib"
 done
