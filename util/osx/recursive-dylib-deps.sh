@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Usage: ./recursive-dylib-deps.sh /path/to/binary
+# Usage: ./resolve-dylibs.sh /path/to/binary
 
 if [ -z "$1" ]; then
   echo "Usage: $0 <binary>"
@@ -11,10 +11,8 @@ BINARY="$1"
 VISITED=()
 RESOLVED=()
 
-# Function to resolve and store libraries recursively
 resolve_links() {
   local file="$1"
-
   [[ ! -f "$file" ]] && return
   [[ " ${VISITED[*]} " =~ " ${file} " ]] && return
 
@@ -26,45 +24,49 @@ resolve_links() {
   while IFS= read -r lib; do
     local resolved=""
 
-    # --- Special case for libsfml ---
+    # --- Special case: @rpath/libsfml* -> am/obj/sfml/install/lib ---
     if [[ "$lib" == @rpath/libsfml* ]]; then
-      for candidate in am/obj/sfml/install/lib/"${lib#@rpath/}"; do
-        if [[ -f "$candidate" ]]; then
-          resolved="$candidate"
-          echo "Resolved special case for SFML: $lib -> $resolved"
-          break
-        fi
-      done
+      local libfile="${lib#@rpath/}"
+      local sfml_candidate="am/obj/sfml/install/lib/$libfile"
+      if [[ -f "$sfml_candidate" ]]; then
+        resolved="$sfml_candidate"
+        echo "Resolved SFML override: $lib -> $resolved"
+      fi
     fi
 
-    # --- pkg-config for general @rpath ---
+    # --- Try pkg-config if still unresolved and lib is @rpath/... ---
     if [[ -z "$resolved" && "$lib" == @rpath/* ]]; then
-      local base_lib="${lib#@rpath/}"
-      base_lib="${base_lib%%.*}"  # Remove suffix after first .
-
-      echo "Running pkg-config --libs-only-L for: $base_lib"
+      local libfile="${lib#@rpath/}"
+      local base="${libfile%%.dylib*}"         # e.g. libwebp.7 or libwebp.0.1
+      base="${base%%.*}"                       # extract just the base, e.g. libwebp
+      echo "Running pkg-config --libs-only-L for: $base"
       local pkg_lib
-      pkg_lib=$(pkg-config --libs-only-L "$base_lib" 2>/dev/null)
-
-      echo "pkg-config result for $base_lib: $pkg_lib"
+      pkg_lib=$(pkg-config --libs-only-L "$base" 2>/dev/null)
+      echo "pkg-config result for $base: $pkg_lib"
 
       if [[ -n "$pkg_lib" ]]; then
-        resolved="${pkg_lib#-L}/$base_lib.dylib"
+        local pkg_dir="${pkg_lib#-L}"
+        local candidate="$pkg_dir/$libfile"
+        if [[ -f "$candidate" ]]; then
+          resolved="$candidate"
+        fi
       fi
-    elif [[ -f "$lib" ]]; then
+    fi
+
+    # --- Try absolute path as-is ---
+    if [[ -z "$resolved" && -f "$lib" ]]; then
       resolved="$lib"
     fi
 
-    # --- Try manual LC_RPATH fallback ---
+    # --- Try rpath entries in binary ---
     if [[ -z "$resolved" && "$lib" == @rpath/* ]]; then
       local rpaths
       rpaths=$(otool -l "$file" | awk '
         $1 == "cmd" && $2 == "LC_RPATH" {r=1}
         r && $1 == "path" {print $2; r=0}
       ')
-
       for rpath in $rpaths; do
-        candidate="${rpath}/${lib#@rpath/}"
+        local candidate="$rpath/${lib#@rpath/}"
         if [[ -f "$candidate" ]]; then
           resolved="$candidate"
           break
@@ -72,7 +74,7 @@ resolve_links() {
       done
     fi
 
-    # Store resolved path if unique
+    # --- Store and recurse ---
     if [[ -n "$resolved" && ! " ${RESOLVED[*]} " =~ " ${resolved} " ]]; then
       RESOLVED+=("$resolved")
       resolve_links "$resolved"
@@ -80,11 +82,11 @@ resolve_links() {
   done <<< "$links"
 }
 
-# Start
+# Start recursion
 resolve_links "$BINARY"
 
 # Final output
-echo "Resolved libraries:"
+echo -e "\nResolved libraries:"
 for lib in "${RESOLVED[@]}"; do
   echo "$lib"
 done
