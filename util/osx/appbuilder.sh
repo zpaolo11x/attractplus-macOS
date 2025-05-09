@@ -34,10 +34,6 @@ checklib=$(brew --prefix)
 fr_lib+=("@rpath/libsfml")
 to_lib+=("$basedir/obj/sfml/install/lib/libsfml")
 
-checklib=$(brew --prefix)
-fr_lib+=("@loader_path/../../../../opt")
-to_lib+=("$checklib/opt")
-
 checklib=$(pkg-config --libs-only-L libsharpyuv)
 checklib="${checklib:2}"
 fr_lib+=("@rpath/libsharpyuv")
@@ -61,7 +57,7 @@ done
 
 # Populate fullarray with L0 paths
 # This is the array of entries as they are in the actual binaries
-fullarray=( $(otool -L $attractname | tail -n +2 | grep '@loader_path\|@loader_path/../../../../opt\|/usr/local\|/opt/homebrew\|@rpath' | awk -F' ' '{print $1}') )
+fullarray=( $(otool -L $attractname | tail -n +2 | grep '/opt/homebrew\|@rpath' | awk -F' ' '{print $1}') )
 
 echo
 echo $( basename "$attractname" )
@@ -146,8 +142,8 @@ done
 libsarray=( $(ls "$bundlecontent"/libs) )
 for str in ${libsarray[@]}; do
    echo fixing $str
-   subarray=( $(otool -L "$bundlelibs"/$str | tail -n +2 | grep '@loader_path\|@loader_path/../../../../opt\|/usr/local\|/opt/homebrew\|@rpath' | awk -F' ' '{print $1}') )
-   subarray_fix=( $(otool -L "$bundlelibs"/$str | tail -n +2 | grep '@loader_path\|@loader_path/../../../../opt\|/usr/local\|/opt/homebrew\|@rpath' | awk -F' ' '{print $1}') )
+   subarray=( $(otool -L "$bundlelibs"/$str | tail -n +2 | grep '/opt/homebrew\|@rpath' | awk -F' ' '{print $1}') )
+   subarray_fix=( $(otool -L "$bundlelibs"/$str | tail -n +2 | grep '/opt/homebrew\|@rpath' | awk -F' ' '{print $1}') )
 
 	#Apply correction filters to all libraries
 	for commandline in ${commands[@]}; do
