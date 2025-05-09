@@ -132,9 +132,6 @@ done
 # STEP 4 - UPDATE LIBRARY PATHS IN BINARY AND RESOLVED LIBRARIES
 echo "STEP 4 - UPDATING LIBRARY PATHS"
 
-# Update rpath in the executable to point to the new libs folder inside the app bundle
-install_name_tool -add_rpath "@executable_path/../libs" "$attractname"
-
 # Update library paths in the executable and all resolved libraries
 # Change paths for all copied libraries
 libsarray=( $(ls "$bundlecontent"/libs) )
@@ -170,3 +167,36 @@ SHORTVERSION=${LASTTAG//v/}
 
 sed -e 's/%%SHORTVERSION%%/'${SHORTVERSION}'/' -e 's/%%BUNDLEVERSION%%/'${BUNDLEVERSION}'/' $basedir/util/osx/Info.plist > "$bundlecontent"/Info.plist
 
+
+# Update rpath in the executable to point to the new libs folder inside the app bundle
+install_name_tool -add_rpath "@executable_path/../libs" "$attractname"
+
+
+# List libraries linked in attractplus
+attractlibs=( $(otool -L $attractname | tail -n +2 | grep '/opt/homebrew\|@rpath' | awk -F' ' '{print $1}') )
+
+# Apply new links to libraries
+for str in ${attractlibs[@]}; do
+   str2=$( basename "$str" )
+   install_name_tool -change $str @loader_path/../libs/$str2 "$bundlecontent"/MacOS/attractplus
+done
+#codesign --force -s - "$bundlecontent"/MacOS/attractplus
+echo STEP 5 - RENAME ARTIFACT TO v${SHORTVERSION}
+
+newappname="$buildpath/Attract-Mode Plus v${SHORTVERSION}.app"
+mv "$bundlehome" "$newappname"
+
+signapp=${3:-"no"}
+
+if [[ $signapp == "yes" ]]
+then
+	echo STEP 6 - AD HOC SIGNING
+	libsarray=( $(ls "$newappname/Contents/libs") )
+	for str in ${libsarray[@]}; do
+		codesign --force -s - "$newappname/Contents/libs/$str"
+	done
+	codesign --force -s - "$newappname/Contents/MacOS/attractplus"
+	codesign --force -s - "$newappname"
+fi
+
+echo ALL DONE
