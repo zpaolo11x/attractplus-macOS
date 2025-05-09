@@ -39,10 +39,6 @@ fi
 VISITED=()
 RESOLVED=()
 
-LIBRARY_DIR="$bundlelibs"  # Libraries will be copied here
-
-mkdir -p "$LIBRARY_DIR"  # Ensure libs folder exists
-
 # Function to recursively resolve library dependencies
 resolve_links() {
   local file="$1"
@@ -123,9 +119,9 @@ echo "STEP 3 - COPYING LIBRARIES TO BUNDLE"
 
 for lib in "${RESOLVED[@]}"; do
   lib_name=$(basename "$lib")
-  if [[ ! -f "$LIBRARY_DIR/$lib_name" ]]; then
-    echo "Copying $lib to $LIBRARY_DIR/$lib_name"
-    cp -v "$lib" "$LIBRARY_DIR/$lib_name"
+  if [[ ! -f "$bundlelibs/$lib_name" ]]; then
+    echo "Copying $lib to $bundlelibs/$lib_name"
+    cp -v "$lib" "$bundlelibs/$lib_name"
   fi
 done
 
