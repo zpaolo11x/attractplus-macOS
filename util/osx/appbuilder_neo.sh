@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Usage: ./resolve-dylibs.sh /path/to/binary /path/to/app/bundle
-
-# STEP 1 - PREPARE BUNDLE FOLDERS
 echo "STEP 1 - PREPARE BUNDLE FOLDERS"
 
 # Default to "artifacts" if not provided, as buildpath
@@ -22,7 +19,6 @@ rm -Rf "$bundlehome"
 mkdir -p "$bundlehome" "$bundlecontent" "$bundlelibs"
 mkdir -p "$bundlecontent"/MacOS "$bundlecontent"/Resources "$bundlecontent"/share "$bundlecontent"/share/attract
 
-# STEP 2 - EXECUTABLE AND LIBRARY HANDLING
 echo "STEP 2 - EXECUTABLE AND LIBRARY HANDLING"
 
 # Use the passed or default 'basedir' as the executable path
@@ -114,7 +110,6 @@ resolve_links() {
 # Start resolving libraries from the executable
 resolve_links "$attractname"
 
-# STEP 3 - COPY LIBRARIES TO BUNDLE
 echo "STEP 3 - COPYING LIBRARIES TO BUNDLE"
 
 for lib in "${RESOLVED[@]}"; do
@@ -125,7 +120,6 @@ for lib in "${RESOLVED[@]}"; do
   fi
 done
 
-# STEP 4 - UPDATE LIBRARY PATHS IN BINARY AND RESOLVED LIBRARIES
 echo "STEP 4 - UPDATING LIBRARY PATHS"
 
 # Update library paths in the executable and all resolved libraries
@@ -146,6 +140,7 @@ done
 
 echo "Library paths updated successfully!"
 
+echo STEP 5 - POPULATE BUNDLE FOLDER
 
 # Copy assets to bundle folder
 # cp -r $basedir/config "$bundlecontent"/
@@ -163,10 +158,10 @@ SHORTVERSION=${LASTTAG//v/}
 
 sed -e 's/%%SHORTVERSION%%/'${SHORTVERSION}'/' -e 's/%%BUNDLEVERSION%%/'${BUNDLEVERSION}'/' $basedir/util/osx/Info.plist > "$bundlecontent"/Info.plist
 
+echo STEP 6 - FIX ATTRACTPLUS EXECUTABLE
 
 # Update rpath in the executable to point to the new libs folder inside the app bundle
 install_name_tool -add_rpath "@executable_path/../libs" "$attractname"
-
 
 # List libraries linked in attractplus
 attractlibs=( $(otool -L $attractname | tail -n +2 | grep '/opt/homebrew\|@rpath' | awk -F' ' '{print $1}') )
@@ -177,7 +172,8 @@ for str in ${attractlibs[@]}; do
    install_name_tool -change $str @loader_path/../libs/$str2 "$bundlecontent"/MacOS/attractplus
 done
 #codesign --force -s - "$bundlecontent"/MacOS/attractplus
-echo STEP 5 - RENAME ARTIFACT TO v${SHORTVERSION}
+
+echo STEP 7 - RENAME ARTIFACT TO v${SHORTVERSION}
 
 newappname="$buildpath/Attract-Mode Plus v${SHORTVERSION}.app"
 mv "$bundlehome" "$newappname"
@@ -186,7 +182,7 @@ signapp=${3:-"no"}
 
 if [[ $signapp == "yes" ]]
 then
-	echo STEP 6 - AD HOC SIGNING
+	echo STEP 8 - AD HOC SIGNING
 	libsarray=( $(ls "$newappname/Contents/libs") )
 	for str in ${libsarray[@]}; do
 		codesign --force -s - "$newappname/Contents/libs/$str"
