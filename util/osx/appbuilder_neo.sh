@@ -19,9 +19,9 @@ attractname="$basedir/attractplus"
 
 # STEP 2 - BUILD LIBRARY LIST RECURSIVELY
 
-declare -a unresolved_paths=()
-declare -a resolved_paths=()
-declare -A seen_paths=()
+unresolved_paths=()
+resolved_paths=()
+seen_paths=()
 
 resolve_rpath() {
   local lib="$1"
@@ -60,10 +60,10 @@ process_binary() {
         resolved="$dep"
       fi
 
-      if [[ -f "$resolved" && -z "${seen_paths[$resolved]:-}" ]]; then
+      if [[ -f "$resolved" && ! " ${seen_paths[@]} " =~ " $resolved " ]]; then
         unresolved_paths+=("$dep")
         resolved_paths+=("$resolved")
-        seen_paths["$resolved"]=1
+        seen_paths+=("$resolved")
         process_binary "$resolved"
       fi
     fi
@@ -74,7 +74,7 @@ process_binary "$attractname"
 
 # STEP 3 - COPY LIBRARIES TO BUNDLE AND SET INSTALL NAMES
 
-declare -a copied_libs=()
+copied_libs=()
 
 for ((i=0; i<${#resolved_paths[@]}; i++)); do
   original="${unresolved_paths[$i]}"
