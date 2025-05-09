@@ -27,110 +27,60 @@ attractname="$basedir/attractplus"
 
 echo STEP 2 - COLLECT AND FIX LINKED LIBRARIES
 
-# Define library fixing pairs
-#-- Installing: /Users/djhan/buildattract/attractplus/obj/sfml/install/lib/freetype.framework/Versions/A/freetype
+# Initialize arrays
+fr_lib=()
+to_lib=()
+fullarray=()
+updatearray=("$attractname")
 
-checklib=$(brew --prefix)
-fr_lib+=("@rpath/libsfml")
-to_lib+=("$basedir/obj/sfml/install/lib/libsfml")
+# Recursively find and resolve all linked libraries
+while [ ${#updatearray[@]} -gt 0 ]; do
+    new_updatearray=()
+    for bin in "${updatearray[@]}"; do
+        echo "Scanning: $(basename "$bin")"
 
-checklib=$(pkg-config --libs-only-L libsharpyuv)
-checklib="${checklib:2}"
-fr_lib+=("@rpath/libsharpyuv")
-to_lib+=("$checklib/libsharpyuv")
+        linked_libs=( $(otool -L "$bin" | awk '{print $1}' | grep -E '^@rpath|/opt|/usr/local') )
 
-checklib=$(pkg-config --libs-only-L libwebp)
-checklib="${checklib:2}"
-fr_lib+=("@rpath/libwebp")
-to_lib+=("$checklib/libwebp")
+        for lib in "${linked_libs[@]}"; do
+            orig_lib="$lib"
+            # Attempt to resolve @rpath to actual paths
+            if [[ "$lib" == @rpath/* ]]; then
+                libname=$(basename "$lib")
+                foundpath=$(find "$basedir" -name "$libname" -type f 2>/dev/null | head -n 1)
+                if [[ -n "$foundpath" ]]; then
+                    if [[ ! " ${fr_lib[*]} " =~ " $lib " ]]; then
+                        fr_lib+=("$lib")
+                        to_lib+=("$foundpath")
+                        echo "  Resolved $lib → $foundpath"
+                        lib="$foundpath"
+                    fi
+                else
+                    echo "  WARNING: Could not resolve $lib"
+                    continue
+                fi
+            fi
 
-checklib=$(pkg-config --libs-only-L libjxl_cms)
-checklib="${checklib:2}"
-fr_lib+=("@rpath/libjxl_cms")
-to_lib+=("$checklib/libjxl_cms")
+            # Track the library if not already processed
+            if [[ ! " ${fullarray[*]} " =~ " $lib " ]]; then
+                fullarray+=("$lib")
+                new_updatearray+=("$lib")
+            fi
+        done
+    done
+    updatearray=("${new_updatearray[@]}")
+done
 
-# Build commands for processing
+# Build sed command filters from fr_lib → to_lib
 commands=("")
-for enum in ${!fr_lib[@]}; do
-	commands+=(s/$(sed 's/\//\\\//g' <<< "${fr_lib[enum]}")/$(sed 's/\//\\\//g' <<< "${to_lib[enum]}")/g)
+for enum in "${!fr_lib[@]}"; do
+    commands+=(s/$(sed 's/\//\\\//g' <<< "${fr_lib[$enum]}")/$(sed 's/\//\\\//g' <<< "${to_lib[$enum]}")/g)
 done
 
-# Populate fullarray with L0 paths
-# This is the array of entries as they are in the actual binaries
-fullarray=( $(otool -L $attractname | tail -n +2 | grep '/opt/homebrew\|@rpath' | awk -F' ' '{print $1}') )
-
-echo
-echo $( basename "$attractname" )
-echo "  pre"
-for val in ${fullarray[@]}; do
-   echo "   $val"
+# Apply sed filters to fullarray
+for commandline in "${commands[@]}"; do
+    fullarray=($(sed "$commandline" <<< "${fullarray[@]}"))
 done
 
-# Build fullarray and updatearray with filtered paths
-# This is the array with the correct names of the libraries as they appear in the paths of the build
-for commandline in ${commands[@]}; do
-	fullarray=($(sed "$commandline" <<< "${fullarray[@]}"))
-done
-
-echo "  post"
-for val in ${fullarray[@]}; do
-   echo "   $val"
-done
-
-# Updatearray is the list of libraries that need to be changed, it is used to copy and gather the correct libraries
-# therefore it must use the fullarray data which carries the correct paths
-updatearray=(${fullarray[@]})
-
-# Iterative scan of linked libraries to build library array
-iter=0
-while [ ${#updatearray[@]} != 1 ] #repeat until there are no more sublibraries
-do
-   iter=$(($iter + 1))
-	echo
-   echo check iteration $iter
-	# Sublevelarray is the list of all libraries in this sublevel
-	sublevelarray=("")
-	# Updatearray contains the libraries from fullarray, that is the actual correct library paths,
-	# they are scanned one by one to gather sublibraries for each. Each library is scanned to build the subarray
-   for strlib in ${updatearray[@]}; do
-		subarray=( $(otool -L $strlib | tail -n +2 | grep '/opt/homebrew\|@rpath' | awk -F' ' '{print $1}') )
-		echo $( basename "$strlib" )
-		echo "  pre"
-		for val in ${subarray[@]}; do
-			echo "   $val"
-		done
-		for commandline in ${commands[@]}; do
-			subarray=($(sed "$commandline" <<< "${subarray[@]}"))
-		done
-		echo "  post"
-		for val in ${subarray[@]}; do
-			echo "   $val"
-		done
-		# as before, sublevelarray is built by post entries, with correct path
-      sublevelarray+=("${subarray[@]}")
-   done
-
-	# Updatearray is cleaned so that only new entries can be added for future iterations
-	# Build an array of unique library entries to pass to the next iteration
-   updatearray=("")
-	echo
-   for val in ${sublevelarray[@]}; do
-      new=1
-      for i in ${fullarray[@]}; do
-         if [[ $i == $val ]]
-         then
-            new=0
-         fi
-      done
-		# If the library is not in fullarray, then it can be added to updatearray to be scanned in next level, and to fullarray
-      if [[ $new == "1" ]]
-      then
-         echo L$iter $val
-         updatearray+=($val)
-         fullarray+=($val) #add the current unique non repeated libraries to the global array
-      fi
-   done
-done
 
 # Copy linked libraries to bundle folder, using fullarray that has the whole list of paths
 for str in ${fullarray[@]}; do
