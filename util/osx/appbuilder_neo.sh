@@ -1,168 +1,131 @@
 #!/bin/bash
 
-# Usage: ./resolve-dylibs.sh /path/to/binary /path/to/app/bundle
+set -euo pipefail
 
 # STEP 1 - PREPARE BUNDLE FOLDERS
-echo "STEP 1 - PREPARE BUNDLE FOLDERS"
 
-# Default to "artifacts" if not provided, as buildpath
 buildpath=${1:-"artifacts"}
+echo "Build path: $buildpath"
 
-echo "Build Path: $buildpath"
-
-# Define folder path variables
 bundlehome="$buildpath/Attract Mode Plus.app"
-bundlecontent="$bundlehome"/Contents
-bundlelibs="$bundlecontent"/libs
+bundlecontent="$bundlehome/Contents"
+bundlelibs="$bundlecontent/libs"
 
-# Clean up previous builds
 rm -Rf "$bundlehome"
+mkdir -p "$bundlelibs" "$bundlecontent/MacOS" "$bundlecontent/Resources" "$bundlecontent/share/attract"
 
-# Create the app bundle folders
-mkdir -p "$bundlehome" "$bundlecontent" "$bundlelibs"
-mkdir -p "$bundlecontent"/MacOS "$bundlecontent"/Resources "$bundlecontent"/share "$bundlecontent"/share/attract
-
-# STEP 2 - EXECUTABLE AND LIBRARY HANDLING
-echo "STEP 2 - EXECUTABLE AND LIBRARY HANDLING"
-
-# Use the passed or default 'basedir' as the executable path
 basedir=${2:-"am"}
-attractname="$basedir/attractplus"  # Executable path
+attractname="$basedir/attractplus"
 
-# Check if the executable exists
-if [ ! -f "$attractname" ]; then
-  echo "Error: Executable $attractname does not exist!"
-  exit 1
-fi
+# STEP 2 - BUILD LIBRARY LIST RECURSIVELY
 
-# Initialize arrays to track libraries
-VISITED=()
-RESOLVED=()
+declare -a unresolved_paths=()
+declare -a resolved_paths=()
+declare -A seen_paths=()
 
-LIBRARY_DIR="$bundlelibs"  # Libraries will be copied here
+resolve_rpath() {
+  local lib="$1"
+  local base="${lib#@rpath/}"
 
-mkdir -p "$LIBRARY_DIR"  # Ensure libs folder exists
+  # Handle custom SFML case
+  if [[ "$base" == libsfml* ]]; then
+    echo "$basedir/obj/sfml/install/lib/$base"
+    return
+  fi
 
-# Function to recursively resolve library dependencies
-resolve_links() {
-  local file="$1"
-  [[ ! -f "$file" ]] && return
-  [[ " ${VISITED[*]} " =~ " ${file} " ]] && return
+  local pkg_output
+  pkg_output=$(pkg-config --libs-only-L "$base" 2>/dev/null || true)
+  echo "Running pkg-config --libs-only-L for: $base"
+  echo "pkg-config result for $base: $pkg_output"
 
-  VISITED+=("$file")
-
-  local links
-  links=$(otool -L "$file" | tail -n +2 | awk '{print $1}')
-
-  while IFS= read -r lib; do
-    local resolved=""
-
-    # --- Special case: @rpath/libsfml* -> am/obj/sfml/install/lib ---
-    if [[ "$lib" == @rpath/libsfml* ]]; then
-      local libfile="${lib#@rpath/}"
-      local sfml_candidate="am/obj/sfml/install/lib/$libfile"
-      if [[ -f "$sfml_candidate" ]]; then
-        resolved="$sfml_candidate"
-        echo "Resolved SFML override: $lib -> $resolved"
-      fi
-    fi
-
-    # --- Try pkg-config if still unresolved and lib is @rpath/... ---
-    if [[ -z "$resolved" && "$lib" == @rpath/* ]]; then
-      local libfile="${lib#@rpath/}"
-      local base="${libfile%%.dylib*}"         # e.g. libwebp.7 or libwebp.0.1
-      base="${base%%.*}"                       # extract just the base, e.g. libwebp
-      echo "Running pkg-config --libs-only-L for: $base"
-      local pkg_lib
-      pkg_lib=$(pkg-config --libs-only-L "$base" 2>/dev/null)
-      echo "pkg-config result for $base: $pkg_lib"
-
-      if [[ -n "$pkg_lib" ]]; then
-        local pkg_dir="${pkg_lib#-L}"
-        local candidate="$pkg_dir/$libfile"
-        if [[ -f "$candidate" ]]; then
-          resolved="$candidate"
-        fi
-      fi
-    fi
-
-    # --- Try absolute path as-is ---
-    if [[ -z "$resolved" && -f "$lib" ]]; then
-      resolved="$lib"
-    fi
-
-    # --- Try rpath entries in binary ---
-    if [[ -z "$resolved" && "$lib" == @rpath/* ]]; then
-      local rpaths
-      rpaths=$(otool -l "$file" | awk '
-        $1 == "cmd" && $2 == "LC_RPATH" {r=1}
-        r && $1 == "path" {print $2; r=0}
-      ')
-      for rpath in $rpaths; do
-        local candidate="$rpath/${lib#@rpath/}"
-        if [[ -f "$candidate" ]]; then
-          resolved="$candidate"
-          break
-        fi
-      done
-    fi
-
-    # --- Store and recurse ---
-    if [[ -n "$resolved" && ! " ${RESOLVED[*]} " =~ " ${resolved} " ]]; then
-      RESOLVED+=("$resolved")
-      resolve_links "$resolved"
-    fi
-  done <<< "$links"
+  if [[ "$pkg_output" == -L* ]]; then
+    local dir="${pkg_output#-L}"
+    echo "$dir/$base"
+  else
+    echo "$lib"  # unresolved fallback
+  fi
 }
 
-# Start resolving libraries from the executable
-resolve_links "$attractname"
+process_binary() {
+  local bin="$1"
+  local deps
+  deps=$(otool -L "$bin" | awk 'NR>1 {print $1}')
 
-# STEP 3 - COPY LIBRARIES TO BUNDLE
-echo "STEP 3 - COPYING LIBRARIES TO BUNDLE"
+  while IFS= read -r dep; do
+    if [[ "$dep" == @rpath/* || "$dep" == /opt/homebrew/* ]]; then
+      local resolved=""
+      if [[ "$dep" == @rpath/* ]]; then
+        resolved=$(resolve_rpath "$dep")
+      else
+        resolved="$dep"
+      fi
 
-for lib in "${RESOLVED[@]}"; do
-  lib_name=$(basename "$lib")
-  if [[ ! -f "$LIBRARY_DIR/$lib_name" ]]; then
-    echo "Copying $lib to $LIBRARY_DIR/$lib_name"
-    cp -v "$lib" "$LIBRARY_DIR/$lib_name"
+      if [[ -f "$resolved" && -z "${seen_paths[$resolved]:-}" ]]; then
+        unresolved_paths+=("$dep")
+        resolved_paths+=("$resolved")
+        seen_paths["$resolved"]=1
+        process_binary "$resolved"
+      fi
+    fi
+  done <<< "$deps"
+}
+
+process_binary "$attractname"
+
+# STEP 3 - COPY LIBRARIES TO BUNDLE AND SET INSTALL NAMES
+
+declare -a copied_libs=()
+
+for ((i=0; i<${#resolved_paths[@]}; i++)); do
+  original="${unresolved_paths[$i]}"
+  resolved="${resolved_paths[$i]}"
+  target="$bundlelibs/$(basename "$resolved")"
+
+  if [[ ! -f "$target" ]]; then
+    echo "Copying $resolved to $target"
+    cp "$resolved" "$target"
+    copied_libs+=("$resolved")
   fi
+
+  if [[ "$target" == *.dylib ]]; then
+    echo "Setting install name for $(basename "$target")"
+    chmod +w "$target"
+    install_name_tool -id "@executable_path/../libs/$(basename "$target")" "$target"
+  fi
+
+  chmod -w "$target"
 done
 
-# STEP 4 - UPDATE LIBRARY PATHS IN BINARY AND RESOLVED LIBRARIES
-echo "STEP 4 - UPDATING LIBRARY PATHS"
+# STEP 4 - REWRITE LINKED PATHS IN COPIED LIBS
 
-# Update rpath in the executable to point to the new libs folder inside the app bundle
-install_name_tool -add_rpath "@executable_path/../libs" "$attractname"
-
-# Update library paths in the executable and all resolved libraries
-for lib in "${RESOLVED[@]}"; do
-   echo fixing $lib
-
-  lib_name=$(basename "$lib")
-  new_path="$LIBRARY_DIR/$lib_name"
-
-  # Update the binary to point to the new location for this library
-  install_name_tool -change "$lib" "@executable_path/../libs/$lib_name" "$attractname"
-
-  # Update all linked libraries that point to this one (recursively)
-  resolve_links "$lib"
-  for linked_lib in "${VISITED[@]}"; do
-    install_name_tool -change "$lib" "@executable_path/../libs/$lib_name" "$linked_lib" 2>/dev/null
+for lib in "$bundlelibs"/*.dylib; do
+  linked_libs=$(otool -L "$lib" | awk 'NR>1 {print $1}')
+  for ((i=0; i<${#unresolved_paths[@]}; i++)); do
+    from="${unresolved_paths[$i]}"
+    to="@executable_path/../libs/$(basename "${resolved_paths[$i]}")"
+    if echo "$linked_libs" | grep -q "$from"; then
+      echo "Rewriting $from -> $to in $lib"
+      chmod +w "$lib"
+      install_name_tool -change "$from" "$to" "$lib"
+      chmod -w "$lib"
+    fi
   done
+
+  chmod -w "$lib"
 done
 
-echo "Library paths updated successfully!"
+# STEP 5 - REWRITE PATHS IN MAIN EXECUTABLE
 
-cp -a $basedir/config/ "$bundlecontent"/share/attract
-cp -a $basedir/attractplus "$bundlecontent"/MacOS/
-cp -a $basedir/util/osx/attractplus.icns "$bundlecontent"/Resources/
-cp -a $basedir/util/osx/launch.sh "$bundlecontent"/MacOS/
+for ((i=0; i<${#unresolved_paths[@]}; i++)); do
+  from="${unresolved_paths[$i]}"
+  to="@executable_path/../libs/$(basename "${resolved_paths[$i]}")"
+  if otool -L "$attractname" | grep -q "$from"; then
+    echo "Rewriting $from -> $to in $attractname"
+    chmod +w "$attractname"
+    install_name_tool -change "$from" "$to" "$attractname"
+    chmod -w "$attractname"
+  fi
 
-# Prepare plist file
-LASTTAG=$(git -C $basedir/ describe --tag --abbrev=0)
-VERSION=$(git -C $basedir/ describe --tag | sed 's/-[^-]\{8\}$//')
-BUNDLEVERSION=${VERSION//[v-]/.}; BUNDLEVERSION=${BUNDLEVERSION#"."}
-SHORTVERSION=${LASTTAG//v/}
+done
 
-sed -e 's/%%SHORTVERSION%%/'${SHORTVERSION}'/' -e 's/%%BUNDLEVERSION%%/'${BUNDLEVERSION}'/' $basedir/util/osx/Info.plist > "$bundlecontent"/Info.plist
+echo "✅ All libraries copied and relinked. App bundle ready at: $bundlehome"
