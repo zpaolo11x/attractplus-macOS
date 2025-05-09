@@ -47,8 +47,8 @@ resolve_links() {
       echo "pkg-config result for $base_lib: $pkg_lib"
 
       if [[ -n "$pkg_lib" ]]; then
-        # Use the pkg-config result (don't trim -L for now)
-        resolved="$pkg_lib/$base_lib.dylib"
+        # Strip the -L prefix and append the library name
+        resolved="${pkg_lib#-L}/$base_lib.dylib"
       fi
     elif [[ -f "$lib" ]]; then
       resolved="$lib"
