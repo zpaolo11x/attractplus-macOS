@@ -137,6 +137,8 @@ install_name_tool -add_rpath "@executable_path/../libs" "$attractname"
 
 # Update library paths in the executable and all resolved libraries
 for lib in "${RESOLVED[@]}"; do
+   echo fixing $lib
+
   lib_name=$(basename "$lib")
   new_path="$LIBRARY_DIR/$lib_name"
 
@@ -146,8 +148,21 @@ for lib in "${RESOLVED[@]}"; do
   # Update all linked libraries that point to this one (recursively)
   resolve_links "$lib"
   for linked_lib in "${VISITED[@]}"; do
-    install_name_tool -change "$lib" "@executable_path/../libs/$lib_name" "$linked_lib"
+    install_name_tool -change "$lib" "@executable_path/../libs/$lib_name" "$linked_lib" 2>/dev/null
   done
 done
 
 echo "Library paths updated successfully!"
+
+cp -a $basedir/config/ "$bundlecontent"/share/attract
+cp -a $basedir/attractplus "$bundlecontent"/MacOS/
+cp -a $basedir/util/osx/attractplus.icns "$bundlecontent"/Resources/
+cp -a $basedir/util/osx/launch.sh "$bundlecontent"/MacOS/
+
+# Prepare plist file
+LASTTAG=$(git -C $basedir/ describe --tag --abbrev=0)
+VERSION=$(git -C $basedir/ describe --tag | sed 's/-[^-]\{8\}$//')
+BUNDLEVERSION=${VERSION//[v-]/.}; BUNDLEVERSION=${BUNDLEVERSION#"."}
+SHORTVERSION=${LASTTAG//v/}
+
+sed -e 's/%%SHORTVERSION%%/'${SHORTVERSION}'/' -e 's/%%BUNDLEVERSION%%/'${BUNDLEVERSION}'/' $basedir/util/osx/Info.plist > "$bundlecontent"/Info.plist
