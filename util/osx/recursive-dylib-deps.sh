@@ -34,12 +34,21 @@ resolve_links() {
     # Resolve @rpath using pkg-config if available
     local resolved=""
     if [[ "$lib" == @rpath/* ]]; then
+      # Strip the version suffix (e.g., .0.dylib) to get the base library name
+      local base_lib="${lib#@rpath/}"
+      base_lib="${base_lib%%.*}"  # Remove anything after the first period
+
       # Attempt pkg-config for @rpath
+      echo "Running pkg-config --libs-only-L for: $base_lib"
       local pkg_lib
-      pkg_lib=$(pkg-config --libs-only-L "${lib#@rpath/}" 2>/dev/null)
+      pkg_lib=$(pkg-config --libs-only-L "$base_lib" 2>/dev/null)
+
+      # Echo the pkg-config result
+      echo "pkg-config result for $base_lib: $pkg_lib"
 
       if [[ -n "$pkg_lib" ]]; then
-        resolved="$pkg_lib/${lib#@rpath/}"
+        # Use the pkg-config result (don't trim -L for now)
+        resolved="$pkg_lib/$base_lib.dylib"
       fi
     elif [[ -f "$lib" ]]; then
       resolved="$lib"
