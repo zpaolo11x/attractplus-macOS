@@ -153,7 +153,7 @@ echo "Library paths updated successfully!"
 
 # Copy assets to bundle folder
 # cp -r $basedir/config "$bundlecontent"/
-cp -a $basedir/config/ "$bundlecontent"/share/attract
+cp -a $basedir/config/ "$bundlecontent"/share/attractplus
 cp -a $basedir/attractplus "$bundlecontent"/MacOS/
 cp -a $basedir/util/osx/attractplus.icns "$bundlecontent"/Resources/
 cp -a $basedir/util/osx/launch.sh "$bundlecontent"/MacOS/
