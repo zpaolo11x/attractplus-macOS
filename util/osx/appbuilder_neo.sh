@@ -152,3 +152,21 @@ for str in ${libsarray[@]}; do
 done
 
 echo "Library paths updated successfully!"
+
+
+# Copy assets to bundle folder
+# cp -r $basedir/config "$bundlecontent"/
+cp -a $basedir/config/ "$bundlecontent"/share/attract
+cp -a $basedir/attractplus "$bundlecontent"/MacOS/
+cp -a $basedir/util/osx/attractplus.icns "$bundlecontent"/Resources/
+cp -a $basedir/util/osx/launch.sh "$bundlecontent"/MacOS/
+#cp "$bundlelibs"/libfreetype.6.dylib "$bundlelibs"/freetype
+
+# Prepare plist file
+LASTTAG=$(git -C $basedir/ describe --tag --abbrev=0)
+VERSION=$(git -C $basedir/ describe --tag | sed 's/-[^-]\{8\}$//')
+BUNDLEVERSION=${VERSION//[v-]/.}; BUNDLEVERSION=${BUNDLEVERSION#"."}
+SHORTVERSION=${LASTTAG//v/}
+
+sed -e 's/%%SHORTVERSION%%/'${SHORTVERSION}'/' -e 's/%%BUNDLEVERSION%%/'${BUNDLEVERSION}'/' $basedir/util/osx/Info.plist > "$bundlecontent"/Info.plist
+
