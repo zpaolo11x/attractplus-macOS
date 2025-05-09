@@ -35,14 +35,6 @@ fr_lib+=("@rpath/libsfml")
 to_lib+=("$basedir/obj/sfml/install/lib/libsfml")
 
 checklib=$(brew --prefix)
-fr_lib+=("/opt/homebrew/Cellar/ffmpeg/7.1.1_1/lib")
-to_lib+=("$checklib/opt/ffmpeg/lib")
-
-#checklib=$(brew --prefix)
-#fr_lib+=("/opt/homebrew/Cellar")
-#to_lib+=("$checklib/opt")
-
-checklib=$(brew --prefix)
 fr_lib+=("@loader_path/../../../../opt")
 to_lib+=("$checklib/opt")
 
@@ -60,42 +52,6 @@ checklib=$(pkg-config --libs-only-L libjxl_cms)
 checklib="${checklib:2}"
 fr_lib+=("@rpath/libjxl_cms")
 to_lib+=("$checklib/libjxl_cms")
-
-checklib=$(pkg-config --libs-only-L libavcodec)
-checklib="${checklib:2}"
-fr_lib+=("@loader_path/libavcodec")
-to_lib+=("$checklib/libavcodec")
-
-checklib=$(pkg-config --libs-only-L libswresample)
-checklib="${checklib:2}"
-fr_lib+=("@loader_path/libswresample")
-to_lib+=("$checklib/libswresample")
-
-checklib=$(pkg-config --libs-only-L libavutil)
-checklib="${checklib:2}"
-fr_lib+=("@loader_path/libavutil")
-to_lib+=("$checklib/libavutil")
-
-checklib=$(pkg-config --libs-only-L libcrypto)
-checklib="${checklib:2}"
-fr_lib+=("@loader_path/libcrypto")
-to_lib+=("$checklib/libcrypto")
-
-checklib=$(pkg-config --libs-only-L libbrotlicommon)
-checklib="${checklib:2}"
-fr_lib+=("@loader_path/libbrotlicommon")
-to_lib+=("$checklib/libbrotlicommon")
-
-#fr_lib+=("@rpath/libsharpyuv")
-#to_lib+=("/usr/local/opt/webp/lib/libsharpyuv")
-
-#fr_lib=("@rpath/../Frameworks")
-#to_lib=("$basedir/obj/sfml/install/lib")
-
-#"${myString:1}"
-
-#fr_lib+=("@rpath/libwebp")
-#to_lib+=("/usr/local/opt/webp/lib/libwebp")
 
 # Build commands for processing
 commands=("")
