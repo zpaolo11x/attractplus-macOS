@@ -93,7 +93,7 @@ do
 	# Updatearray contains the libraries from fullarray, that is the actual correct library paths,
 	# they are scanned one by one to gather sublibraries for each. Each library is scanned to build the subarray
    for strlib in ${updatearray[@]}; do
-		subarray=( $(otool -L $strlib | tail -n +2 | grep '@loader_path\|@loader_path/../../../../opt\|/usr/local\|/opt/homebrew\|@rpath' | awk -F' ' '{print $1}') )
+		subarray=( $(otool -L $strlib | tail -n +2 | grep '/opt/homebrew\|@rpath' | awk -F' ' '{print $1}') )
 		echo $( basename "$strlib" )
 		echo "  pre"
 		for val in ${subarray[@]}; do
