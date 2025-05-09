@@ -71,8 +71,9 @@ resolve_links() {
       done
     fi
 
-    # Recurse into resolved library
+    # Only add the resolved library to LIBRARY_ARRAY (not @rpath ones)
     if [[ -n "$resolved" ]]; then
+      LIBRARY_ARRAY+=("$resolved")
       resolve_links "$resolved"
     fi
   done <<< "$links"
@@ -81,8 +82,8 @@ resolve_links() {
 # Start the resolution process
 resolve_links "$BINARY"
 
-# Now LIBRARY_ARRAY contains all the libraries with their paths
-echo "Libraries linked (with paths):"
+# Now LIBRARY_ARRAY contains all the resolved libraries with their paths
+echo "Libraries linked (with resolved paths):"
 for lib in "${LIBRARY_ARRAY[@]}"; do
   echo "$lib"
 done
