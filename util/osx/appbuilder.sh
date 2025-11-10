@@ -195,7 +195,9 @@ then
 	codesign --force -s - "$newappname"
 fi
 
-hdiutil create -volname "Attract-Mode Plus v${SHORTVERSION}" -srcfolder "$newappname" -ov -format UDRW "$buildpath/Attract-Mode Plus v${SHORTVERSION}.dmg"
+echo STEP 8 - BUILD DMG ARTIFACT
 
+hdiutil create -volname "Attract-Mode Plus v${SHORTVERSION}" -srcfolder "$newappname" -ov -format UDRW "$buildpath/Attract-Mode Plus v${SHORTVERSION}.dmg"
+rm -R $newappname
 
 echo ALL DONE
