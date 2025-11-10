@@ -195,4 +195,7 @@ then
 	codesign --force -s - "$newappname"
 fi
 
+hdiutil create -volname "Attract-Mode Plus v${SHORTVERSION}" -srcfolder "$newappname" -ov -format UDRW "Attract-Mode Plus v${SHORTVERSION}.dmg"
+
+
 echo ALL DONE
